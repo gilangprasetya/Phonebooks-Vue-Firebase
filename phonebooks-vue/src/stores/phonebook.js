@@ -1,26 +1,16 @@
-import { defineStore } from 'pinia'
-import axios from 'axios'
+import { initializeApp } from "firebase/app";
+import { getFirestore } from 'firebase/firestore'
 
-const request = axios.create({
-    baseURL: "https://phonebooks-ea7c3-default-rtdb.firebaseio.com/",
-    timeout: 10000
-})
+const firebaseConfig = {
+    apiKey: import.meta.VITE_FIREBASE_API_KEY,
+    authDomain: "phonebooks-vue.firebaseapp.com",
+    projectId: "phonebooks-vue",
+    storageBucket: "phonebooks-vue.appspot.com",
+    messagingSenderId: "945779097567",
+    appId: "1:945779097567:web:46062b647e722cadc70e6a"
+};
 
-export const useContactsStore = defineStore('contacts', () => {
-    const contacts = ref ([])
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-    async function loadContact() {
-        try {
-            const contacts = await request.get('phonebookdb.json')
-        } catch (e) {
-            console.log(e)
-        }
-    }
-
-    async function addContact(contact) {
-
-    }
-
-    return { loadContact, addContact }
-
-})
+export default db;

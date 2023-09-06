@@ -1,7 +1,8 @@
 <script>
 import PhoneHeader from "./PhoneHeader.vue";
 import PhoneList from "./PhoneList.vue";
-import axios from "axios";
+import db from "../../stores/phonebook.js"
+import { collection, getDocs, addDoc } from 'firebase/firestore';
 
 export default {
     components: {
@@ -21,19 +22,16 @@ export default {
     methods: {
         async fetchData(page, sortOrder, keyword = "") {
             try {
-                const response = await axios.get("http://localhost:3001/api/phonebooks", {
-                    params: { sort: sortOrder, page, keyword },
-                });
-                if (response.data.phonebooks) {
-                    this.data =
-                        page === 1
-                            ? response.data.phonebooks
-                            : this.data.concat(
-                                response.data.phonebooks.filter((contact) =>
-                                    !this.data.some((existingContact) => existingContact.id === contact.id)
-                                )
-                            );
-                    this.totalPages = response.data.pages;
+                const query = collection(db, "contacts");
+                const snapshot = await getDocs(query);
+
+                if (!snapshot.empty) {
+                    const data = snapshot.docs.map((doc) => ({
+                        id: doc.id,
+                        ...doc.data(),
+                    }));
+                    this.data = data;
+                    this.totalPages = 1; // Set this to your desired value
                     this.isLoading = false;
                 }
             } catch (error) {
@@ -42,11 +40,11 @@ export default {
         },
         async handleAddContact(name, phone) {
             try {
-                const response = await axios.post("http://localhost:3001/api/phonebooks", {
-                    name: name,
-                    phone: phone,
+                const docRef = await addDoc(collection(db, "contacts"), {
+                    name,
+                    phone,
                 });
-                const newContact = response.data;
+                const newContact = { id: docRef.id, name, phone };
                 this.data.push(newContact);
             } catch (error) {
                 console.error("Error creating contact:", error);
@@ -89,6 +87,27 @@ export default {
     beforeDestroy() {
         window.removeEventListener("scroll", this.handleScroll);
     },
+    computed: {
+        sortedData() {
+            let sortedData = [...this.data];
+
+            if (this.sortOrder === 'asc') {
+                sortedData.sort((a, b) => a.name.localeCompare(b.name));
+            } else {
+                sortedData.sort((a, b) => b.name.localeCompare(a.name));
+            }
+
+            if (this.searchKeyword) {
+                const keyword = this.searchKeyword.toLowerCase();
+                sortedData = sortedData.filter(contact =>
+                    contact.name.toLowerCase().includes(keyword) ||
+                    contact.phone.includes(this.searchKeyword)
+                );
+            }
+
+            return sortedData;
+        },
+    },
 };
 </script>
 
@@ -100,7 +119,7 @@ export default {
         </header>
         <main class="mt-3">
             <ul>
-                <PhoneList v-for="contact in data" :key="contact.id" :id="contact.id" :name="contact.name"
+                <PhoneList v-for="contact in sortedData" :key="contact.id" :id="contact.id" :name="contact.name"
                     :phone="contact.phone" :avatar="contact.avatar" :data="data" v-on:updateData="updateData" />
             </ul>
             <div style="height: 350px;"></div>
