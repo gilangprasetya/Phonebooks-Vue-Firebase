@@ -182,6 +182,14 @@ ul {
   width: 155px;
 }
 
+.name {
+  color: #000000;
+}
+
+.phone {
+  color: #000000;
+}
+
 /* Media queries for different screen sizes */
 @media (min-width: 1200px) {
 
