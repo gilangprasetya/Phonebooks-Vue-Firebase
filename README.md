@@ -1,1 +1,1 @@
-# Phonebooks-Vue-Sequelize
+# Phonebooks-Vue-Firebase
