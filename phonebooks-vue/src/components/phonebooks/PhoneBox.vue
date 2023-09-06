@@ -20,7 +20,7 @@ export default {
         };
     },
     methods: {
-        async fetchData(page, sortOrder, keyword = "") {
+        async fetchData() {
             try {
                 const query = collection(db, "contacts");
                 const snapshot = await getDocs(query);
@@ -31,7 +31,7 @@ export default {
                         ...doc.data(),
                     }));
                     this.data = data;
-                    this.totalPages = 1; // Set this to your desired value
+                    this.totalPages = 1;
                     this.isLoading = false;
                 }
             } catch (error) {
