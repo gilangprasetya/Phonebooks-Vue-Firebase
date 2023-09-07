@@ -2,13 +2,14 @@
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { faFloppyDisk, faPenToSquare, faTrashCan } from "@fortawesome/free-solid-svg-icons";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
+import { doc, updateDoc, getDoc } from "firebase/firestore";
+import db from "../../stores/phonebook.js"
 
 export default {
     props: {
-        id: Number,
+        id: String,
         name: String,
         phone: String,
-        avatar: String,
         data: Array,
         setData: Function,
         updateAvatar: Function,
@@ -41,12 +42,21 @@ export default {
             const avatarRef = storageRef(this.storage, `avatars/${this.id}/${avatarName}`);
 
             try {
-                this.avatarUploadTask = uploadBytes(avatarRef, file); 
+                this.avatarUploadTask = uploadBytes(avatarRef, file);
                 this.avatarUploadTask.then(() => {
                     getDownloadURL(avatarRef)
                         .then((downloadURL) => {
                             this.avatar = downloadURL;
                             this.updateAvatar(this.id, downloadURL);
+
+                            const docRef = doc(db, "contacts", this.id);
+                            updateDoc(docRef, { avatarUrl: downloadURL })
+                                .then(() => {
+                                    console.log("Avatar URL updated in Firestore.", this.id, this.avatar);
+                                })
+                                .catch((error) => {
+                                    console.error("Error updating avatar URL in Firestore:", error);
+                                });
                         })
                         .catch((error) => {
                             console.error("Error getting download URL:", error);
@@ -58,9 +68,22 @@ export default {
                 console.error("Error uploading avatar:", error);
             }
         },
+
         handleImageClick() {
             this.$refs.avatarInput.click();
         },
+
+        async fetchAvatarUrl() {
+            const docRef = doc(db, "contacts", this.id);
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                this.avatar = docSnap.data().avatarUrl;
+            }
+        },
+    },
+    mounted() {
+        this.fetchAvatarUrl();
     },
 };
 </script>
@@ -68,7 +91,7 @@ export default {
 <template>
     <li class="card">
         <div class="image">
-            <img :src="avatar ? avatar : '/user.png'" class="img-fluid" alt="User" @click="handleImageClick" />
+            <img :src="this.avatar ? this.avatar : '/user.png'" class="img-fluid" alt="User" @click="handleImageClick" />
             <input type="file" accept="image/*" @change="handleAvatarUpload" style="display: none" ref="avatarInput" />
         </div>
         <div class="info">

@@ -57,7 +57,7 @@ export default {
         updateAvatar(id, avatarUrl) {
             const contactIndex = this.data.findIndex((contact) => contact.id === id);
             if (contactIndex !== -1) {
-                this.data[contactIndex].avatar = avatarUrl;
+                this.data[contactIndex].contactAvatar = avatarUrl;
             }
         },
         handleSearch(keyword) {
@@ -134,7 +134,7 @@ export default {
         <main class="mt-3">
             <ul>
                 <PhoneList v-for="contact in sortedData" :key="contact.id" :id="contact.id" :name="contact.name"
-                    :phone="contact.phone" :avatar="contact.avatar" :data="data" :updateAvatar="updateAvatar"
+                    :phone="contact.phone" :data="data" :updateAvatar="updateAvatar"
                     v-on:updateData="updateData" />
             </ul>
         </main>
