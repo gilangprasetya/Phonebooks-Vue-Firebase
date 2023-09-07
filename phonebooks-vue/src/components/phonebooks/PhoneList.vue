@@ -2,7 +2,7 @@
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { faFloppyDisk, faPenToSquare, faTrashCan } from "@fortawesome/free-solid-svg-icons";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
-import { doc, updateDoc, getDoc } from "firebase/firestore";
+import { doc, updateDoc, getDoc, deleteDoc } from "firebase/firestore";
 import db from "../../stores/phonebook.js"
 
 export default {
@@ -52,7 +52,7 @@ export default {
                             const docRef = doc(db, "contacts", this.id);
                             updateDoc(docRef, { avatarUrl: downloadURL })
                                 .then(() => {
-                                    console.log("Avatar URL updated in Firestore.", this.id, this.avatar);
+                                    console.log("Avatar URL updated in Firestore.");
                                 })
                                 .catch((error) => {
                                     console.error("Error updating avatar URL in Firestore:", error);
@@ -80,6 +80,51 @@ export default {
             if (docSnap.exists()) {
                 this.avatar = docSnap.data().avatarUrl;
             }
+        },
+
+        handleEditClick() {
+            this.isEditing = true;
+        },
+
+        async handleSaveClick() {
+            try {
+                const docRef = doc(db, "contacts", this.id);
+                await updateDoc(docRef, { name: this.editedName, phone: this.editedPhone });
+
+                const contactIndex = this.data.findIndex(contact => contact.id === this.id);
+                if (contactIndex !== -1) {
+                    this.data[contactIndex].name = this.editedName;
+                    this.data[contactIndex].phone = this.editedPhone;
+                }
+
+                this.isEditing = false;
+            } catch (error) {
+                console.error("Error saving contact:", error);
+            }
+        },
+
+        handleDelete() {
+            this.showConfirmModal = true;
+        },
+
+        async handleConfirmDelete() {
+            try {
+                const docRef = doc(db, "contacts", this.id);
+                await deleteDoc(docRef);
+
+                const contactIndex = this.data.findIndex(contact => contact.id === this.id);
+                if (contactIndex !== -1) {
+                    this.data.splice(contactIndex, 1);
+                }
+
+                this.showConfirmModal = false;
+            } catch (error) {
+                console.error("Error deleting contact:", error);
+            }
+        },
+
+        handleCancelDelete() {
+            this.showConfirmModal = false;
         },
     },
     mounted() {
