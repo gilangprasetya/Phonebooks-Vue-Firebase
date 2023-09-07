@@ -1,7 +1,7 @@
 <script>
-import axios from "axios";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { faFloppyDisk, faPenToSquare, faTrashCan } from "@fortawesome/free-solid-svg-icons";
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 
 export default {
     props: {
@@ -11,92 +11,55 @@ export default {
         avatar: String,
         data: Array,
         setData: Function,
+        updateAvatar: Function,
     },
     components: {
         FontAwesomeIcon,
     },
     data() {
+        const storage = getStorage();
+
         return {
             isEditing: false,
             editedName: this.name,
             editedPhone: this.phone,
             showConfirmModal: false,
             icons: { faFloppyDisk, faPenToSquare, faTrashCan },
+            avatarUploadTask: null,
+            storage: storage,
+            avatar: this.avatar,
         };
     },
     methods: {
-        handleImageClick() {
-            const fileInput = document.createElement("input");
-            fileInput.type = "file";
-            fileInput.accept = "image/*";
-            fileInput.addEventListener("change", (event) => {
-                const file = event.target.files[0];
-                const formData = new FormData();
-                formData.append("avatar", file);
+        async handleAvatarUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
 
-                axios
-                    .put(`http://localhost:3001/api/phonebooks/${this.id}/avatar`, formData)
-                    .then((response) => {
-                        this.updateAvatar(this.id, response.data.data.avatar);
-                    })
-                    .catch((error) => {
-                        console.error("Error updating avatar:", error);
-                    });
-                window.location.reload();
-            });
-            fileInput.click();
-        },
-        updateAvatar(contactId, newAvatar) {
-            const updatedData = this.data.map((contact) => {
-                if (contact.id === contactId) {
-                    return {
-                        ...contact,
-                        avatar: newAvatar,
-                    };
-                }
-                return contact;
-            });
-            this.setData(updatedData);
-        },
-        handleEditClick() {
-            this.isEditing = true;
-        },
-        handleSaveClick(event) {
-            event.preventDefault();
-            this.updateContact();
-        },
-        async updateContact() {
+            const timestamp = Date.now();
+            const avatarName = `${timestamp}-${file.name}`;
+
+            const avatarRef = storageRef(this.storage, `avatars/${this.id}/${avatarName}`);
+
             try {
-                await axios.put(`http://localhost:3001/api/phonebooks/${this.id}`, {
-                    name: this.editedName,
-                    phone: this.editedPhone,
+                this.avatarUploadTask = uploadBytes(avatarRef, file); 
+                this.avatarUploadTask.then(() => {
+                    getDownloadURL(avatarRef)
+                        .then((downloadURL) => {
+                            this.avatar = downloadURL;
+                            this.updateAvatar(this.id, downloadURL);
+                        })
+                        .catch((error) => {
+                            console.error("Error getting download URL:", error);
+                        });
+                }).catch((error) => {
+                    console.error("Error uploading avatar:", error);
                 });
-                this.isEditing = false;
             } catch (error) {
-                console.error("Error updating contact:", error);
+                console.error("Error uploading avatar:", error);
             }
         },
-        handleDelete() {
-            this.showConfirmModal = true;
-        },
-        handleConfirmDelete() {
-            axios
-                .delete(`http://localhost:3001/api/phonebooks/${this.id}`)
-                .then(() => {
-                    window.location.reload();
-                })
-                .catch((error) => {
-                    console.error("Error deleting contact:", error);
-                });
-        },
-        handleCancelDelete() {
-            this.showConfirmModal = false;
-        },
-        handleMouseOver(event) {
-            event.target.style.cursor = "pointer";
-        },
-        handleMouseOut(event) {
-            event.target.style.cursor = "auto";
+        handleImageClick() {
+            this.$refs.avatarInput.click();
         },
     },
 };
@@ -105,12 +68,11 @@ export default {
 <template>
     <li class="card">
         <div class="image">
-            <img :src="avatar ? `http://localhost:3001/images/${avatar}` : '/user.png'" class="img-fluid" alt="User"
-                @click="handleImageClick" />
+            <img :src="avatar ? avatar : '/user.png'" class="img-fluid" alt="User" @click="handleImageClick" />
+            <input type="file" accept="image/*" @change="handleAvatarUpload" style="display: none" ref="avatarInput" />
         </div>
         <div class="info">
             <template v-if="isEditing">
-                <!-- Show input fields during edit mode -->
                 <form @submit.prevent="handleSaveClick">
                     <input type="text" v-model="editedName" />
                     <br />
@@ -119,7 +81,6 @@ export default {
                 </form>
             </template>
             <template v-else>
-                <!-- Show contact details in non-edit mode -->
                 <span class="name">{{ editedName }}</span>
                 <br />
                 <span class="phone">{{ editedPhone }}</span>

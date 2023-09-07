@@ -14,9 +14,10 @@ export default {
             data: [],
             sortOrder: "asc",
             currentPage: 1,
-            totalPages: 1,
+            pageSize: 13,
             isLoading: false,
             searchKeyword: "",
+            totalItems: 0,
         };
     },
     methods: {
@@ -31,7 +32,8 @@ export default {
                         ...doc.data(),
                     }));
                     this.data = data;
-                    this.totalPages = 1;
+                    this.totalItems = data.length;
+                    this.updateTotalPages();
                     this.isLoading = false;
                 }
             } catch (error) {
@@ -46,13 +48,22 @@ export default {
                 });
                 const newContact = { id: docRef.id, name, phone };
                 this.data.push(newContact);
+                this.totalItems += 1; // Increment totalItems when adding a contact
+                this.updateTotalPages();
             } catch (error) {
                 console.error("Error creating contact:", error);
+            }
+        },
+        updateAvatar(id, avatarUrl) {
+            const contactIndex = this.data.findIndex((contact) => contact.id === id);
+            if (contactIndex !== -1) {
+                this.data[contactIndex].avatar = avatarUrl;
             }
         },
         handleSearch(keyword) {
             this.searchKeyword = keyword;
             this.currentPage = 1;
+            this.updateTotalPages();
         },
         updateSortOrder(newSortOrder) {
             this.sortOrder = newSortOrder;
@@ -67,6 +78,9 @@ export default {
                     this.currentPage += 1;
                 }
             }
+        },
+        updateTotalPages() {
+            this.totalPages = Math.ceil(this.totalItems / this.pageSize);
         },
     },
     watch: {
@@ -105,7 +119,7 @@ export default {
                 );
             }
 
-            return sortedData;
+            return sortedData.slice(0, this.currentPage * this.pageSize);
         },
     },
 };
@@ -120,9 +134,9 @@ export default {
         <main class="mt-3">
             <ul>
                 <PhoneList v-for="contact in sortedData" :key="contact.id" :id="contact.id" :name="contact.name"
-                    :phone="contact.phone" :avatar="contact.avatar" :data="data" v-on:updateData="updateData" />
+                    :phone="contact.phone" :avatar="contact.avatar" :data="data" :updateAvatar="updateAvatar"
+                    v-on:updateData="updateData" />
             </ul>
-            <div style="height: 350px;"></div>
         </main>
     </div>
 </template>
